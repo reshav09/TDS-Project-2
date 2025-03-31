@@ -4,17 +4,12 @@ import os
 import json
 import base64
 from fastapi import UploadFile  # type: ignore
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 BASE_URL = "https://aiproxy.sanand.workers.dev/openai/v1"
 
 
 def GA3_1(question: str):
-    match = re.search(r"meaningless text:\s*(.*?)\s*Write a",
-                      question, re.DOTALL)
+    match = re.search(r"meaningless text:\s*(.*?)\s*Write a", question, re.DOTALL)
 
     if not match:
         return "Error: No match found in the input string."
@@ -33,6 +28,7 @@ headers = {{"Content-Type": "application/json","Authorization": "Bearer dummy_ap
 response = httpx.post("https://api.openai.com/v1/chat/completions", json=data, headers=headers)
 print(response.json())"""
     return python_code
+
 
 # question="""
 # DataSentinel Inc. is a tech company specializing in building advanced natural language processing (NLP) solutions. Their latest project involves integrating an AI-powered sentiment analysis module into an internal monitoring dashboard. The goal is to automatically classify large volumes of unstructured feedback and text data from various sources as either GOOD, BAD, or NEUTRAL. As part of the quality assurance process, the development team needs to test the integration with a series of sample inputs—even ones that may not represent coherent text—to ensure that the system routes and processes the data correctly.
@@ -64,24 +60,26 @@ print(response.json())"""
 def GA3_2(question: str):
     match = re.search(
         r"List only the valid English words from these:(.*?)\s*\.\.\. how many input tokens does it use up?",
-        question, re.DOTALL
+        question,
+        re.DOTALL,
     )
     if not match:
         return "Error: No valid input found."
-    user_message = "List only the valid English words from these: " + \
-        match.group(1).strip()
+    user_message = (
+        "List only the valid English words from these: " + match.group(1).strip()
+    )
     # Make a real request to get the accurate token count
     data = {
         "model": "gpt-4o-mini",
-        "messages": [{"role": "user", "content": user_message}]
+        "messages": [{"role": "user", "content": user_message}],
     }
-    API_KEY = os.getenv("AIPROXY_TOKEN")
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {API_KEY}"
-    }
-    response = httpx.post(BASE_URL + "/chat/completions",
-                          json=data, headers=headers, timeout=60)
+    API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjIzZjIwMDM3NTFAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.twnougmakpXTfQUGrtiBUc2WSRe8LAROPEuPSC3RXSw"
+    # API_KEY = os.getenv("AIPROXY_TOKEN")  # Set this variable in your system
+    # print(API_KEY)
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {API_KEY}"}
+    response = httpx.post(
+        BASE_URL + "/chat/completions", json=data, headers=headers, timeout=60
+    )
 
     return response.json().get("usage", {}).get("prompt_tokens")
 
@@ -94,13 +92,14 @@ def GA3_2(question: str):
 # """
 # print(GA3_2(question))
 
+
 def GA3_3(question: str):
     match = re.search(
         r"Uses structured outputs to respond with an object addresses which is an array of objects with required fields: "
         r"(\w+)\s*\(\s*(\w+)\s*\)\s*"
         r"(\w+)\s*\(\s*(\w+)\s*\)\s*"
         r"(\w+)\s*\(\s*(\w+)\s*\)",
-        question
+        question,
     )
 
     if match:
@@ -118,7 +117,7 @@ def GA3_3(question: str):
         "model": "gpt-4o-mini",
         "messages": [
             {"role": "system", "content": "Respond in JSON"},
-            {"role": "user", "content": "Generate 10 random addresses in the US"}
+            {"role": "user", "content": "Generate 10 random addresses in the US"},
         ],
         "response_format": {
             "type": "json_schema",
@@ -134,19 +133,27 @@ def GA3_3(question: str):
                             "items": {
                                 "type": "object",
                                 "properties": {
-                                    field1: {"type": type1, "description": f"The {field1} of the address."},
-                                    field2: {"type": type2, "description": f"The {field2} of the address."},
+                                    field1: {
+                                        "type": type1,
+                                        "description": f"The {field1} of the address.",
+                                    },
+                                    field2: {
+                                        "type": type2,
+                                        "description": f"The {field2} of the address.",
+                                    },
                                     field3: {
-                                        "type": type3, "description": f"The {field3} of the address."}
+                                        "type": type3,
+                                        "description": f"The {field3} of the address.",
+                                    },
                                 },
                                 "additionalProperties": False,
-                                "required": [field1, field2, field3]
-                            }
+                                "required": [field1, field2, field3],
+                            },
                         }
-                    }
-                }
-            }
-        }
+                    },
+                },
+            },
+        },
     }
 
     return json_data  # Return parsed JSON object
@@ -165,6 +172,7 @@ def GA3_3(question: str):
 # What is the JSON body we should send to https://api.openai.com/v1/chat/completions for this? (No need to run it or to use an API key. Just write the body of the request below.)
 # """
 # print(GA3_3(question))
+
 
 async def GA3_4(question: str, file: UploadFile):
     if not file or not file.filename:
@@ -185,11 +193,11 @@ async def GA3_4(question: str, file: UploadFile):
                     {"type": "text", "text": "Extract text from this image."},
                     {
                         "type": "image_url",
-                        "image_url": {"url": f"data:image/png;base64,{image_b64}"}
-                    }
-                ]
+                        "image_url": {"url": f"data:image/png;base64,{image_b64}"},
+                    },
+                ],
             }
-        ]
+        ],
     }
 
     return json_data
@@ -197,18 +205,19 @@ async def GA3_4(question: str, file: UploadFile):
 
 def GA3_5(question: str):
     matches = re.findall(
-        r"Dear user, please verify your transaction code (\d+) sent to ([\w.%+-]+@[\w.-]+\.\w+)", question)
+        r"Dear user, please verify your transaction code (\d+) sent to ([\w.%+-]+@[\w.-]+\.\w+)",
+        question,
+    )
 
     if matches:
         extracted_messages = [
-            f"Dear user, please verify your transaction code {code} sent to {email}" for code, email in matches]
+            f"Dear user, please verify your transaction code {code} sent to {email}"
+            for code, email in matches
+        ]
         print(extracted_messages)  # Debugging line
 
-        result = {
-            "model": "text-embedding-3-small",
-            "input": extracted_messages
-        }
-        return result 
+        result = {"model": "text-embedding-3-small", "input": extracted_messages}
+        return result
     else:
         return {"error": "Invalid format"}
 

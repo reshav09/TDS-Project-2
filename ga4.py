@@ -11,17 +11,7 @@ import pytz
 from geopy.geocoders import Nominatim  # type: ignore
 import io
 from fastapi import UploadFile  # type: ignore
-import os
-import httpx
-import numpy as np
-from io import BytesIO
-import asyncio
-from PIL import Image
-import base64
-from dotenv import load_dotenv
 
-# Load environment variables
-load_dotenv()
 
 def GA4_1(question: str):
     match = re.search(
@@ -128,17 +118,58 @@ def GA4_2(question):
 # What is the JSON data?"""
 # print(GA4_2(question))
 
-def GA4_4(question: str):
-    match = re.search(r"to (.*?) from (.*?)\?", question)
-    if not match:
-        return "Error extracting locations from the query."
-    
-    destination = match.group(1).strip()
-    origin = match.group(2).strip()
-    
-    # Create the URL for the directions API
-    mapquest_api_key = os.getenv("MAPQUEST_API_KEY")
-    # ... rest of the function ...
+def GA4_4(question):
+    match = re.search(
+        r"What is the JSON weather forecast description for (\w+)?", question)
+    required_city = match.group(1)
+    print(required_city)
+    # required_city = "Karachi"
+    location_url = 'https://locator-service.api.bbci.co.uk/locations?' + urlencode({
+        'api_key': 'AGbFAKx58hyjQScCXIYrxuEwJh2W2cmv',
+        's': required_city,
+        'stack': 'aws',
+        'locale': 'en',
+        'filter': 'international',
+        'place-types': 'settlement,airport,district',
+        'order': 'importance',
+        'a': 'true',
+        'format': 'json'
+    })
+    result = requests.get(location_url).json()
+    if not result['response']['results']['results']:
+        return "No location found"
+    url = 'https://www.bbc.com/weather/' + \
+        result['response']['results']['results'][0]['id']
+    time_zone = result['response']['results']['results'][0]['timezone']
+    response = requests.get(url)
+    if response.status_code != 200:
+        return json.dumps({"error": "Failed to fetch data from BBC"}, indent=2)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    daily_summary = soup.find('div', attrs={'class': 'wr-day-summary'})
+    daily_summary_list = re.findall('[a-zA-Z][^A-Z]*', daily_summary.text)
+    daily_high_values = soup.find_all(
+        'span', attrs={'class': 'wr-day-temperature__high-value'})
+    daily_low_values = soup.find_all(
+        'span', attrs={'class': 'wr-day-temperature__low-value'})
+    # local_time = datetime.today()
+    local_time = datetime.now(pytz.timezone(time_zone))
+    print(local_time.date().strftime('%Y-%m-%d'))
+    # date_list = pd.date_range(local_time, periods=len(daily_high_values)).tolist()
+    date_list = [(local_time + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(14)]
+
+    # Ensure lists have 14 entries
+    while len(daily_summary_list) < 14:
+        daily_summary_list.append("Data not available")
+        
+    zipped = zip(date_list, daily_summary_list)
+    df = pd.DataFrame(list(zipped), columns=['Date', 'Summary'])
+    json_data = df.set_index('Date')['Summary'].to_json()
+    # print(json_data)
+    return json_data
+
+# question = "What is the JSON weather forecast description for Karachi?"
+# print(GA4_4(question))
+
 
 def get_country_code(country_name):
     try:
